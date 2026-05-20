@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pengukuran Sungai Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --panel: rgba(255,255,255,.82);
+      --panel-solid: #ffffff;
+      --ink: #152033;
+      --muted: #6f7b91;
+      --line: rgba(29, 46, 80, .09);
+      --blue: #2f80ed;
+      --blue-soft: #eaf3ff;
+      --purple: #7c3aed;
+      --cyan: #00a6c8;
+      --normal: #21b36b;
+      --waspada: #eab308;
+      --siaga: #f97316;
+      --bahaya: #ef4444;
+      --shadow: 0 20px 50px rgba(31, 62, 122, .13);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(47,128,237,.16), transparent 26%),
+        radial-gradient(circle at 90% 5%, rgba(0,166,200,.14), transparent 24%),
+        linear-gradient(180deg, #edf4ff 0%, #f8fbff 58%, #eef5ff 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: calc(100vw - 18px);
+      max-width: none;
+      margin: 12px auto;
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      min-height: calc(100vh - 36px);
+      background: rgba(255,255,255,.48);
+      border: 1px solid rgba(255,255,255,.7);
+      box-shadow: var(--shadow);
+      border-radius: 34px;
+      overflow: visible;
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      align-self: start;
+      padding: 18px 12px;
+      background: rgba(255,255,255,.86);
+      border-right: 1px solid var(--line);
+      border-radius: 34px 0 0 34px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+    }
+
+    .menu-toggle {
+      width: 48px;
+      height: 48px;
+      border: 0;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, #2f80ed, #00a6c8);
+      box-shadow: 0 12px 30px rgba(47,128,237,.3);
+      font-size: 28px;
+      line-height: 1;
+      cursor: pointer;
+      font-weight: 900;
+      transform: rotate(90deg);
+    }
+
+    .menu-popover {
+      position: absolute;
+      left: 72px;
+      top: 18px;
+      width: 244px;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.94);
+      border: 1px solid rgba(255,255,255,.72);
+      box-shadow: 0 24px 70px rgba(31, 62, 122, .2);
+      backdrop-filter: blur(18px);
+      display: none;
+    }
+
+    .menu-popover.active { display: block; }
+
+    .menu-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: -.04em;
+    }
+
+    .menu-title-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, #2f80ed, #00a6c8);
+    }
+
+    .nav-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: #9aa4b6;
+      margin: 8px 12px;
+      font-weight: 700;
+    }
+
+    .nav {
+      display: grid;
+      gap: 7px;
+    }
+
+    .nav a {
+      color: #536174;
+      text-decoration: none;
+      padding: 12px 13px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav a.active,
+    .nav a:hover {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .sidebar-card {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(160deg, #173b6b, #0ea5c7);
+      color: white;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sidebar-card::after {
+      content: "";
+      position: absolute;
+      right: -32px;
+      bottom: -46px;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+    }
+
+    .sidebar-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      letter-spacing: -.02em;
+    }
+
+    .sidebar-card p {
+      margin: 0 0 16px;
+      color: rgba(255,255,255,.78);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .main {
+      padding: 18px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .hero {
+      min-height: 210px;
+      border-radius: 30px;
+      background:
+        linear-gradient(90deg, rgba(15,35,71,.78), rgba(47,128,237,.18)),
+        url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80') center/cover;
+      color: white;
+      padding: 28px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(8,23,50,.1), rgba(8,23,50,.72));
+    }
+
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1;
+      letter-spacing: -.06em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 690px;
+      color: rgba(255,255,255,.78);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: .2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn.primary {
+      color: white;
+      background: linear-gradient(135deg, #2f80ed, #00a6c8);
+      box-shadow: 0 16px 34px rgba(47,128,237,.28);
+    }
+
+    .btn.ghost {
+      color: white;
+      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.25);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .auto-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 15px;
+      border-radius: 16px;
+      color: white;
+      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.25);
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 24px 4px 14px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -.04em;
+    }
+
+    .section-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .last-update {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .node-card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 24px;
+      padding: 17px;
+      box-shadow: 0 16px 34px rgba(31, 62, 122, .08);
+      position: relative;
+      overflow: hidden;
+      min-height: 232px;
+    }
+
+    .node-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 5px;
+      background: var(--status-color, var(--normal));
+    }
+
+    .node-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .node-title h3 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -.04em;
+    }
+
+    .node-title span {
+      display: block;
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--status-color, var(--normal));
+      background: color-mix(in srgb, var(--status-color, var(--normal)) 13%, white);
+      border: 1px solid color-mix(in srgb, var(--status-color, var(--normal)) 18%, white);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 16%, transparent);
+    }
+
+    .metric-big {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .metric-big strong {
+      font-size: 34px;
+      letter-spacing: -.07em;
+      line-height: 1;
+    }
+
+    .metric-big span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .mini {
+      padding: 10px;
+      border-radius: 15px;
+      background: rgba(245,248,255,.84);
+      border: 1px solid var(--line);
+    }
+
+    .mini label {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+
+    .mini b {
+      font-size: 13px;
+    }
+
+    .connection {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--normal);
+    }
+
+    .connection.offline { color: var(--bahaya); }
+
+    .filters {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 24px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 240px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      box-shadow: 0 16px 34px rgba(31, 62, 122, .07);
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    select,
+    input[type="date"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 15px;
+      padding: 12px 13px;
+      font-family: inherit;
+      font-weight: 700;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .range-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .range-btn {
+      border: 1px solid var(--line);
+      background: white;
+      color: #637086;
+      border-radius: 14px;
+      padding: 11px 14px;
+      cursor: pointer;
+      font-weight: 800;
+      font-family: inherit;
+    }
+
+    .range-btn.active {
+      color: white;
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .custom-range {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .alert-strip {
+      display: none;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .alert-box,
+    .stat-box {
+      border-radius: 24px;
+      padding: 17px;
+      border: 1px solid rgba(255,255,255,.72);
+      background: var(--panel);
+      box-shadow: 0 16px 34px rgba(31, 62, 122, .07);
+    }
+
+    .alert-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .alert-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      flex: 0 0 auto;
+    }
+
+    .alert-box h3,
+    .stat-box h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      letter-spacing: -.03em;
+    }
+
+    .alert-box p,
+    .stat-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 13px;
+    }
+
+    .stat-chip {
+      border-radius: 16px;
+      background: #f6f9ff;
+      border: 1px solid var(--line);
+      padding: 10px;
+    }
+
+    .stat-chip span {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .stat-chip b {
+      display: block;
+      margin-top: 4px;
+      font-size: 17px;
+      letter-spacing: -.04em;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .chart-card,
+    .table-card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 16px 34px rgba(31, 62, 122, .07);
+      min-width: 0;
+    }
+
+    .chart-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .chart-title h3 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -.04em;
+    }
+
+    .chart-title p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .small-charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .chart-card canvas {
+      height: 210px !important;
+      max-height: 210px;
+    }
+
+    .status-card {
+      min-height: 252px;
+    }
+
+    .status-panel {
+      display: grid;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .single-status {
+      border-radius: 22px;
+      padding: 18px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+    }
+
+    .single-status .big-status {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--pill-color);
+      background: color-mix(in srgb, var(--pill-color) 13%, white);
+    }
+
+    .single-status h4 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.05em;
+    }
+
+    .single-status p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) max-content;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+    }
+
+    .risk-item strong {
+      display: block;
+      font-size: 14px;
+      letter-spacing: -.03em;
+    }
+
+    .risk-item div > span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .risk-item .status-pill {
+      min-width: 98px;
+      justify-content: center;
+      padding: 9px 13px;
+      white-space: nowrap;
+    }
+
+    .risk-item .status-pill .dot {
+      display: inline-block;
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+
+    .safe-empty {
+      border-radius: 22px;
+      padding: 20px;
+      background: color-mix(in srgb, var(--normal) 9%, white);
+      border: 1px solid color-mix(in srgb, var(--normal) 18%, white);
+    }
+
+    .safe-empty h4 {
+      margin: 0 0 7px;
+      color: var(--normal);
+      font-size: 21px;
+      letter-spacing: -.05em;
+    }
+
+    .safe-empty p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 890px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-weight: 800;
+      background: rgba(246,249,255,.7);
+    }
+
+    td { font-weight: 650; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--pill-color);
+      background: color-mix(in srgb, var(--pill-color) 12%, white);
+    }
+
+    .footer-note {
+      margin: 18px 4px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(9, 18, 35, .44);
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: 86vh;
+      overflow: auto;
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 30px 80px rgba(6, 15, 35, .28);
+      border: 1px solid rgba(255,255,255,.7);
+    }
+
+    .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px;
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h2 {
+      margin: 0 0 5px;
+      font-size: 22px;
+      letter-spacing: -.05em;
+    }
+
+    .modal-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .modal-close {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 14px;
+      background: #f2f6ff;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .modal-body { padding: 18px 22px 24px; }
+
+    .threshold-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .threshold-card {
+      border-radius: 18px;
+      padding: 13px;
+      background: #f7faff;
+      border: 1px solid var(--line);
+    }
+
+    .threshold-card span {
+      display: block;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 5px;
+    }
+
+    .threshold-card b {
+      font-size: 13px;
+    }
+
+    .warning-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .warning-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 18px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+    }
+
+    .warning-item h3 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      letter-spacing: -.03em;
+    }
+
+    .warning-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1280px) {
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .filters { grid-template-columns: 1fr; }
+      .custom-range { flex-wrap: wrap; }
+    }
+
+    @media (max-width: 920px) {
+      .shell {
+        grid-template-columns: 1fr;
+        margin: 8px auto;
+        width: calc(100vw - 12px);
+        max-width: none;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        height: auto;
+        min-height: 74px;
+        border-radius: 24px 24px 0 0;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        align-items: flex-start;
+      }
+
+      .menu-popover {
+        left: 12px;
+        top: 74px;
+        width: min(330px, calc(100vw - 42px));
+      }
+
+      .nav {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .sidebar-card { display: none; }
+      .hero { align-items: flex-start; flex-direction: column; justify-content: flex-end; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid, .alert-strip { grid-template-columns: 1fr; }
+      .small-charts { grid-template-columns: 1fr; }
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 560px) {
+      .main { padding: 14px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .nav { grid-template-columns: 1fr 1fr; }
+      .hero { padding: 20px; min-height: 250px; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .custom-range { display: grid; grid-template-columns: 1fr; }
+      .threshold-grid { grid-template-columns: 1fr 1fr; }
+      .warning-item { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <button class="menu-toggle" id="sidebarMenuBtn" aria-label="Buka menu">•••</button>
+
+      <div class="menu-popover" id="sidebarMenuPanel">
+        <div class="menu-title"><span class="menu-title-icon">≋</span><span>RiverMeasurement</span></div>
+        <div class="nav-label">Menu</div>
+        <nav class="nav">
+          <a class="active" href="#dashboard">▣ Dashboard</a>
+          <a href="#summary">◉ Ringkasan Node</a>
+          <a href="#charts">⌁ Grafik Sensor</a>
+          <a href="#logs">☷ Log Data</a>
+          <a href="#" id="navWarningBtn">⚠ Peringatan</a>
+          <a href="#filters">⚙ Pengaturan</a>
+        </nav>
+        <div class="sidebar-card">
+          <h3>Peringatan Sungai</h3>
+          <p>Menu ini dipakai untuk melihat node yang masuk Waspada, Siaga, atau Bahaya. Ditampilkan hanya saat menu Peringatan ditekan.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="hero" id="dashboard">
+        <div>
+          <h1>Dashboard Monitoring Sungai</h1>
+          <p>Pemantauan level muka air, curah hujan, dan debit aliran untuk 6 node sensor. Data dummy masih digunakan.</div>
+        <div class="hero-actions">
+          <div class="auto-badge"><span class="dot"></span>Auto update aktif · 30 detik</div>
+        </div>
+      </section>
+
+      <section id="summary">
+        <div class="section-head">
+          <div>
+            <h2>Ringkasan Kondisi Terbaru</h2>
+            <p>Menampilkan status real-time dari seluruh node sensor sungai.</p>
+          </div>
+          <div class="last-update">Update terakhir: <span id="globalLastUpdate">-</span></div>
+        </div>
+        <div class="summary-grid" id="nodeCards"></div>
+      </section>
+
+      <section id="filters">
+        <div class="section-head">
+          <div>
+            <h2>Filter Monitoring</h2>
+            <p>Pilih node dan rentang waktu untuk membaca grafik.</p>
+          </div>
+        </div>
+
+        <div class="filters">
+          <div class="field">
+            <label for="nodeFilter">Node Sensor</label>
+            <select id="nodeFilter">
+              <option value="all">Semua Node</option>
+              <option value="1">semarang_01 - Amposari Bridge</option>
+              <option value="2">semarang_02 - Kali Babon Penggaron</option>
+              <option value="3">semarang_03 - Sendang Mulyo</option>
+              <option value="4">semarang_04 - Meteseh</option>
+              <option value="5">semarang_05 - Metro Bridge</option>
+              <option value="6">semarang_06 - Sikatak Bridge</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Rentang Waktu</label>
+            <div class="range-tabs" id="rangeTabs">
+              <button class="range-btn active" data-range="today">Hari Ini</button>
+              <button class="range-btn" data-range="daily">Harian</button>
+              <button class="range-btn" data-range="weekly">Mingguan</button>
+              <button class="range-btn" data-range="monthly">Bulanan</button>
+              <button class="range-btn" data-range="yearly">Tahunan</button>
+            </div>
+          </div>
+
+          <div class="custom-range">
+            <div class="field">
+              <label>Dari</label>
+              <input type="date" id="startDate" />
+            </div>
+            <div class="field">
+              <label>Sampai</label>
+              <input type="date" id="endDate" />
+            </div>
+          </div>
+        </div>
+
+        <div class="alert-strip" id="warningSection">
+          <div class="alert-box" id="alertBox">
+            <div class="alert-icon">⚠</div>
+            <div>
+              <h3 id="alertTitle">Peringatan Sungai</h3>
+              <p id="alertMessage">Sistem akan menampilkan node dengan kondisi paling berisiko berdasarkan level muka air terbaru.</p>
+            </div>
+          </div>
+          <div class="stat-box">
+            <h3>Rekap Cepat</h3>
+            <p>Jumlah node berdasarkan status kondisi terkini.</p>
+            <div class="stat-row" id="statusStats"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="charts">
+        <div class="section-head">
+          <div>
+            <h2>Grafik Real-time dan Historis</h2>
+            <p>Grafik berubah mengikuti pilihan node dan rentang waktu.</p>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">
+              <div>
+                <h3>Level Muka Air</h3>
+                <p>Grafik utama untuk membaca kenaikan atau penurunan permukaan sungai.</p>
+              </div>
+              <span class="legend-note" id="chartContext">Semua Node · Hari Ini</span>
+            </div>
+            <canvas id="levelChart" height="90"></canvas>
+          </div>
+
+          <div class="chart-card status-card">
+            <div class="chart-title">
+              <div>
+                <h3 id="statusPanelTitle">Ringkasan Risiko Node</h3>
+                <p id="statusPanelSubtitle">Menampilkan node yang sedang berisiko, bukan donat ambigu yang sok artistik.</p>
+              </div>
+            </div>
+            <div class="status-panel" id="statusPanelContent"></div>
+          </div>
+        </div>
+
+        <div class="small-charts">
+          <div class="chart-card">
+            <div class="chart-title">
+              <div>
+                <h3>Curah Hujan</h3>
+                <p>Intensitas hujan per periode pengamatan.</p>
+              </div>
+            </div>
+            <canvas id="rainChart" height="90"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">
+              <div>
+                <h3>Flow Rate / Debit Aliran</h3>
+                <p>Perubahan debit aliran berdasarkan node terpilih.</p>
+              </div>
+            </div>
+            <canvas id="flowChart" height="90"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section id="logs">
+        <div class="section-head">
+          <div>
+            <h2>Tabel Log Data Terbaru</h2>
+            <p>Catatan pembacaan sensor terakhir dari semua node.</p>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th>Lokasi</th>
+                  <th>Level Air</th>
+                  <th>Curah Hujan</th>
+                  <th>Flow Rate</th>
+                  <th>Koneksi</th>
+                  <th>Status Sungai</th>
+                  <th>Data Terakhir</th>
+                </tr>
+              </thead>
+              <tbody id="logTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="footer-note">Catatan desain: halaman ini masih memakai data dummy.</p>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="warningModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="warningModalTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="warningModalTitle">Peringatan</h2>
+          <p>Menampilkan node yang sedang Waspada, Siaga, atau Bahaya berdasarkan ambang level muka air.</p>
+        </div>
+        <button class="modal-close" id="warningCloseBtn" aria-label="Tutup">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="threshold-grid">
+          <div class="threshold-card"><span style="color:#21b36b">Normal</span><b>&lt; 2.20 m</b></div>
+          <div class="threshold-card"><span style="color:#eab308">Waspada</span><b>2.20 - 3.09 m</b></div>
+          <div class="threshold-card"><span style="color:#f97316">Siaga</span><b>3.10 - 3.99 m</b></div>
+          <div class="threshold-card"><span style="color:#ef4444">Bahaya</span><b>≥ 4.00 m</b></div>
+        </div>
+        <div class="warning-list" id="warningList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STATUS = {
+      normal: { label: 'Normal', color: '#21b36b', priority: 1 },
+      waspada: { label: 'Waspada', color: '#eab308', priority: 2 },
+      siaga: { label: 'Siaga', color: '#f97316', priority: 3 },
+      bahaya: { label: 'Bahaya', color: '#ef4444', priority: 4 }
+    };
+
+    const nodeNames = [
+      'Amposari Bridge',
+      'Kali Babon Penggaron',
+      'Sendang Mulyo',
+      'Meteseh',
+      'Metro Bridge',
+      'Sikatak Bridge'
+    ];
+
+    let selectedNode = 'all';
+    let selectedRange = 'today';
+
+    let nodes = Array.from({ length: 6 }, (_, i) => generateNode(i + 1));
+    let charts = {};
+
+    function randomBetween(min, max, decimals = 1) {
+      return Number((Math.random() * (max - min) + min).toFixed(decimals));
+    }
+
+    function getStatus(level) {
+      if (level >= 4.0) return 'bahaya';
+      if (level >= 3.1) return 'siaga';
+      if (level >= 2.2) return 'waspada';
+      return 'normal';
+    }
+
+    function generateNode(id) {
+      const level = randomBetween(1.1, 4.6, 2);
+      const rain = randomBetween(0, 46, 1);
+      const flow = randomBetween(18, 142, 1);
+      const online = Math.random() > 0.08;
+      return {
+        id,
+        name: `semarang_${String(id).padStart(2, '0')}`,
+        location: nodeNames[id - 1],
+        level,
+        rain,
+        flow,
+        online,
+        status: getStatus(level),
+        lastUpdate: new Date()
+      };
+    }
+
+    function mutateNodes() {
+      nodes = nodes.map(node => {
+        const level = Math.max(0.6, Math.min(4.9, node.level + randomBetween(-0.28, 0.33, 2)));
+        const rain = Math.max(0, Math.min(68, node.rain + randomBetween(-6, 8, 1)));
+        const flow = Math.max(8, Math.min(168, node.flow + randomBetween(-13, 16, 1)));
+        const online = Math.random() > 0.06;
+        return {
+          ...node,
+          level: Number(level.toFixed(2)),
+          rain: Number(rain.toFixed(1)),
+          flow: Number(flow.toFixed(1)),
+          online,
+          status: getStatus(level),
+          lastUpdate: new Date()
+        };
+      });
+      renderAll();
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function formatDateTime(date) {
+      return date.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    function renderCards() {
+      const container = document.getElementById('nodeCards');
+      container.innerHTML = nodes.map(node => {
+        const status = STATUS[node.status];
+        return `
+          <article class="node-card" style="--status-color:${status.color}">
+            <div class="node-top">
+              <div class="node-title">
+                <h3>${node.name}</h3>
+                <span>${node.location}</span>
+              </div>
+              <div class="badge"><span class="dot"></span>${status.label}</div>
+            </div>
+
+            <div class="metric-big">
+              <strong>${node.level}</strong><span>m</span>
+            </div>
+
+            <div class="connection ${node.online ? '' : 'offline'}">
+              <span class="dot"></span>${node.online ? 'Online' : 'Offline'}
+            </div>
+
+            <div class="mini-grid">
+              <div class="mini">
+                <label>Curah Hujan</label>
+                <b>${node.rain} mm</b>
+              </div>
+              <div class="mini">
+                <label>Flow Rate</label>
+                <b>${node.flow} m³/s</b>
+              </div>
+              <div class="mini" style="grid-column: 1 / -1">
+                <label>Data Terakhir</label>
+                <b>${formatTime(node.lastUpdate)}</b>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('logTable');
+      tbody.innerHTML = nodes.map(node => {
+        const status = STATUS[node.status];
+        return `
+          <tr>
+            <td>${node.name}</td>
+            <td>${node.location}</td>
+            <td>${node.level} m</td>
+            <td>${node.rain} mm</td>
+            <td>${node.flow} m³/s</td>
+            <td><span class="connection ${node.online ? '' : 'offline'}"><span class="dot"></span>${node.online ? 'Online' : 'Offline'}</span></td>
+            <td><span class="status-pill" style="--pill-color:${status.color}"><span class="dot"></span>${status.label}</span></td>
+            <td>${formatDateTime(node.lastUpdate)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderStatsAndAlert() {
+      const counts = { normal: 0, waspada: 0, siaga: 0, bahaya: 0 };
+      nodes.forEach(node => counts[node.status]++);
+
+      document.getElementById('statusStats').innerHTML = Object.entries(counts).map(([key, value]) => `
+        <div class="stat-chip">
+          <span>${STATUS[key].label}</span>
+          <b style="color:${STATUS[key].color}">${value}</b>
+        </div>
+      `).join('');
+
+      const riskiest = [...nodes].sort((a, b) => STATUS[b.status].priority - STATUS[a.status].priority || b.level - a.level)[0];
+      const status = STATUS[riskiest.status];
+      document.getElementById('alertTitle').textContent = `${status.label}: ${riskiest.name} - ${riskiest.location}`;
+      document.getElementById('alertMessage').textContent = `Level muka air ${riskiest.level} m, curah hujan ${riskiest.rain} mm, debit ${riskiest.flow} m³/s. Data terakhir diterima pukul ${formatTime(riskiest.lastUpdate)}.`;
+      document.querySelector('.alert-icon').style.background = `linear-gradient(135deg, ${status.color}, #152033)`;
+    }
+
+    function statusMeaning(key) {
+      if (key === 'normal') return 'Aman. Kondisi sungai masih berada di bawah ambang waspada.';
+      if (key === 'waspada') return 'Waspada. Level air mulai naik dan perlu dipantau lebih sering.';
+      if (key === 'siaga') return 'Siaga. Risiko luapan meningkat, petugas perlu bersiap.';
+      return 'Bahaya. Level air sudah melewati ambang kritis dan perlu tindakan cepat.';
+    }
+
+    function renderStatusPanel() {
+      const title = document.getElementById('statusPanelTitle');
+      const subtitle = document.getElementById('statusPanelSubtitle');
+      const panel = document.getElementById('statusPanelContent');
+
+      if (selectedNode !== 'all') {
+        const node = nodes.find(n => String(n.id) === selectedNode);
+        const status = STATUS[node.status];
+        title.textContent = `Status ${node.name}`;
+        subtitle.textContent = `${node.location} · update ${formatTime(node.lastUpdate)}`;
+        panel.innerHTML = `
+          <div class="single-status">
+            <div class="big-status" style="--pill-color:${status.color}"><span class="dot"></span>${status.label}</div>
+            <h4 style="color:${status.color}">${node.status === 'normal' ? 'Aman' : status.label}</h4>
+            <p>${statusMeaning(node.status)}</p>
+            <p>Level muka air <b>${node.level} m</b>, curah hujan <b>${node.rain} mm/jam</b>, debit <b>${node.flow} m³/s</b>, sensor <b>${node.online ? 'online' : 'offline'}</b>.</p>
+          </div>
+        `;
+        return;
+      }
+
+      title.textContent = 'Node yang Perlu Perhatian';
+      subtitle.textContent = 'Menampilkan node berstatus Waspada, Siaga, atau Bahaya.';
+
+      const riskyNodes = nodes
+        .filter(node => node.status !== 'normal')
+        .sort((a, b) => STATUS[b.status].priority - STATUS[a.status].priority || b.level - a.level);
+
+      if (!riskyNodes.length) {
+        panel.innerHTML = `
+          <div class="safe-empty">
+            <h4>Semua Node Aman</h4>
+            <p>Tidak ada node yang masuk status Waspada, Siaga, atau Bahaya pada data terakhir.</p>
+          </div>
+        `;
+        return;
+      }
+
+      panel.innerHTML = riskyNodes.map(node => {
+        const status = STATUS[node.status];
+        return `
+          <div class="risk-item">
+            <div>
+              <strong>${node.name} - ${node.location}</strong>
+              <span>Level ${node.level} m · Hujan ${node.rain} mm/jam · Debit ${node.flow} m³/s</span>
+            </div>
+            <span class="status-pill" style="--pill-color:${status.color}"><span class="dot"></span>${status.label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderWarningCenter() {
+      const list = document.getElementById('warningList');
+      const sortedNodes = [...nodes].sort((a, b) => STATUS[b.status].priority - STATUS[a.status].priority || b.level - a.level);
+
+      list.innerHTML = sortedNodes.map(node => {
+        const status = STATUS[node.status];
+        const actionText = node.status === 'bahaya'
+          ? 'Tindakan: kirim peringatan darurat dan pantau evakuasi titik rawan.'
+          : node.status === 'siaga'
+            ? 'Tindakan: siapkan notifikasi warga dan pantau kenaikan level air.'
+            : node.status === 'waspada'
+              ? 'Tindakan: tingkatkan pemantauan berkala.'
+              : 'Tindakan: pemantauan normal.';
+
+        return `
+          <div class="warning-item">
+            <div>
+              <h3>${node.name} - ${node.location}</h3>
+              <p>Level ${node.level} m · Hujan ${node.rain} mm/jam · Debit ${node.flow} m³/s · ${node.online ? 'Sensor online' : 'Sensor offline'} · Update ${formatTime(node.lastUpdate)}</p>
+              <p>${actionText}</p>
+            </div>
+            <span class="status-pill" style="--pill-color:${status.color}"><span class="dot"></span>${status.label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function makeLabels(range) {
+      if (range === 'weekly') return ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+      if (range === 'monthly') return ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+      if (range === 'yearly') return ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      if (range === 'daily') return ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'];
+      return ['-3m', '-2.5m', '-2m', '-1.5m', '-1m', '-30d', 'Sekarang'];
+    }
+
+    function buildSeries(metric, range) {
+      const labels = makeLabels(range);
+      const chosenNodes = selectedNode === 'all' ? nodes : nodes.filter(n => String(n.id) === selectedNode);
+      return chosenNodes.map(node => {
+        const base = node[metric];
+        return {
+          label: node.name,
+          data: labels.map((_, i) => {
+            const drift = Math.sin(i / 1.7 + node.id) * (metric === 'level' ? .35 : metric === 'rain' ? 8 : 18);
+            const noise = randomBetween(metric === 'level' ? -.18 : -4, metric === 'level' ? .18 : 5, 2);
+            const value = Math.max(0, base + drift + noise);
+            return Number(value.toFixed(metric === 'level' ? 2 : 1));
+          }),
+          tension: .42,
+          borderWidth: 3,
+          pointRadius: 3,
+          fill: false
+        };
+      });
+    }
+
+    function createOrUpdateChart(id, type, config) {
+      const ctx = document.getElementById(id);
+      if (charts[id]) {
+        charts[id].data = config.data;
+        charts[id].options = config.options;
+        charts[id].update();
+        return;
+      }
+      charts[id] = new Chart(ctx, { type, ...config });
+    }
+
+    function commonOptions(unit) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter', weight: 700 } } },
+          tooltip: {
+            callbacks: {
+              label: context => `${context.dataset.label}: ${context.parsed.y} ${unit}`
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'Inter', weight: 700 } } },
+          y: { beginAtZero: true, grid: { color: 'rgba(29,46,80,.07)' }, ticks: { font: { family: 'Inter', weight: 700 }, callback: value => `${value}` } }
+        }
+      };
+    }
+
+    function renderCharts() {
+      const labels = makeLabels(selectedRange);
+      const rangeLabel = document.querySelector(`.range-btn[data-range="${selectedRange}"]`)?.textContent || 'Custom';
+      const selectedNodeData = nodes.find(n => String(n.id) === selectedNode);
+      const nodeLabel = selectedNode === 'all' ? 'Semua Node' : `${selectedNodeData.name} - ${selectedNodeData.location}`;
+      document.getElementById('chartContext').textContent = `${nodeLabel} · ${rangeLabel}`;
+
+      createOrUpdateChart('levelChart', 'line', {
+        data: { labels, datasets: buildSeries('level', selectedRange) },
+        options: commonOptions('m')
+      });
+
+      createOrUpdateChart('rainChart', 'bar', {
+        data: { labels, datasets: buildSeries('rain', selectedRange).map(ds => ({ ...ds, borderWidth: 0, borderRadius: 8 })) },
+        options: commonOptions('mm')
+      });
+
+      createOrUpdateChart('flowChart', 'line', {
+        data: { labels, datasets: buildSeries('flow', selectedRange) },
+        options: commonOptions('m³/s')
+      });
+
+      renderStatusPanel();
+    }
+
+    function renderAll() {
+      document.getElementById('globalLastUpdate').textContent = formatDateTime(new Date());
+      renderCards();
+      renderTable();
+      renderStatsAndAlert();
+      renderWarningCenter();
+      renderStatusPanel();
+      renderCharts();
+    }
+
+    const sidebarMenuBtn = document.getElementById('sidebarMenuBtn');
+    const sidebarMenuPanel = document.getElementById('sidebarMenuPanel');
+
+    sidebarMenuBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      sidebarMenuPanel.classList.toggle('active');
+    });
+
+    document.addEventListener('click', event => {
+      if (!sidebarMenuPanel.contains(event.target) && event.target !== sidebarMenuBtn) {
+        sidebarMenuPanel.classList.remove('active');
+      }
+    });
+
+    document.querySelectorAll('.nav a').forEach(link => {
+      link.addEventListener('click', event => {
+        document.querySelectorAll('.nav a').forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+
+        sidebarMenuPanel.classList.remove('active');
+
+        if (link.id === 'navWarningBtn') {
+          event.preventDefault();
+          renderWarningCenter();
+          warningModal.classList.add('active');
+          warningModal.setAttribute('aria-hidden', 'false');
+        }
+      });
+    });
+
+    document.getElementById('nodeFilter').addEventListener('change', event => {
+      selectedNode = event.target.value;
+      renderCharts();
+    });
+
+    document.getElementById('rangeTabs').addEventListener('click', event => {
+      const button = event.target.closest('.range-btn');
+      if (!button) return;
+      document.querySelectorAll('.range-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      selectedRange = button.dataset.range;
+      renderCharts();
+    });
+
+    const warningModal = document.getElementById('warningModal');
+
+    document.getElementById('warningCloseBtn').addEventListener('click', () => {
+      warningModal.classList.remove('active');
+      warningModal.setAttribute('aria-hidden', 'true');
+    });
+
+    warningModal.addEventListener('click', event => {
+      if (event.target === warningModal) {
+        warningModal.classList.remove('active');
+        warningModal.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        warningModal.classList.remove('active');
+        warningModal.setAttribute('aria-hidden', 'true');
+      }
+    });
+    document.getElementById('startDate').addEventListener('change', () => {
+      document.querySelectorAll('.range-btn').forEach(btn => btn.classList.remove('active'));
+      selectedRange = 'custom';
+      renderCharts();
+    });
+    document.getElementById('endDate').addEventListener('change', () => {
+      document.querySelectorAll('.range-btn').forEach(btn => btn.classList.remove('active'));
+      selectedRange = 'custom';
+      renderCharts();
+    });
+
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    document.getElementById('endDate').valueAsDate = today;
+    document.getElementById('startDate').valueAsDate = sevenDaysAgo;
+
+    renderAll();
+    setInterval(mutateNodes, 30000);
+  </script>
+</body>
+</html>
